@@ -2941,10 +2941,17 @@ void WiFiOps::serveConfigPage() {
 }
 
 bool WiFiOps::monitorAP(unsigned long timeoutMs) {
+  this->drawAPExitOption();
+
   unsigned long start = millis();
   while (millis() - start < timeoutMs) {
     this->showCountdown();
     delay(100);
+    if (c_btn.justPressed()) {
+      Logger::log(STD_MSG, "Exit selected. Starting wardriving...");
+      shutdownAccessPoint();
+      return false;
+    }
     if (WiFi.softAPgetStationNum() > 0) {
       Logger::log(GUD_MSG, "Client connected.");
       return true;
@@ -2975,7 +2982,8 @@ void WiFiOps::shutdownAccessPoint(bool ap_active) {
 void WiFiOps::showCountdown() {
   if (millis() - this->last_timer > TIMER_UPDATE) {
     this->last_timer = millis();
-    display.tft->fillRect(0, SMALL_CHAR_HEIGHT * 2, TFT_WIDTH, TFT_HEIGHT - (SMALL_CHAR_HEIGHT * 2), ST77XX_BLACK);
+    // Leave the bottom line alone for the exit option
+    display.tft->fillRect(0, SMALL_CHAR_HEIGHT * 2, TFT_WIDTH, TFT_HEIGHT - (SMALL_CHAR_HEIGHT * 3), ST77XX_BLACK);
     display.tft->setCursor(0, SMALL_CHAR_HEIGHT * 4);
     display.tft->println("Wardring starts...\n");
     display.tft->setTextSize(2);
@@ -2984,67 +2992,90 @@ void WiFiOps::showCountdown() {
   }
 }
 
-bool WiFiOps::begin(bool skip_admin) {
+// Highlighted exit option on the bottom line of the AP screen
+void WiFiOps::drawAPExitOption() {
+  display.tft->fillRect(0, TFT_HEIGHT - SMALL_CHAR_HEIGHT, TFT_WIDTH, SMALL_CHAR_HEIGHT, ST77XX_BLACK);
+  display.tft->setCursor(0, TFT_HEIGHT - SMALL_CHAR_HEIGHT);
+  display.tft->setTextColor(ST77XX_BLACK, ST77XX_GREEN);
+  display.tft->print("> Exit and Start WDR now");
+  display.tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+}
+
+bool WiFiOps::begin(uint8_t boot_mode) {
   this->current_scan_mode = WIFI_STANDBY;
 
   this->run_mode = settings.loadSetting<int>("m");
 
-  if (!skip_admin) {
+  if (boot_mode != BOOT_MODE_WARDRIVE) {
     // Init WiFi
     this->initWiFi();
 
+    bool connected = false;
+
     // Run Admin stuff and wait for clients first
-    bool connected = this->tryConnectToWiFi();
-
-    this->connected_as_client = connected;
-
-    if (!connected) {
-      delay(1000);
+    if (boot_mode == BOOT_MODE_JOIN_WIFI) {
+      connected = this->tryConnectToWiFi();
+      if (!connected)
+        delay(2000); // Leave "Failed to connect" on screen, then wardrive
+    }
+    else {
       this->startAccessPoint();
     }
+
+    this->connected_as_client = connected;
 
     /*if (connected) {
       Logger::log(STD_MSG, "Attempting upload...");
       this->backendUpload("/wardrive_0.log");
     }*/
 
-    this->serveConfigPage();
+    // Serve the web UI on the AP, or on the saved WiFi if we joined it.
+    // A failed join skips straight to wardriving.
+    if ((boot_mode == BOOT_MODE_START_AP) || (connected)) {
+      this->serveConfigPage();
 
-    this->serving = true;
+      this->serving = true;
 
-    this->last_web_client_activity = millis();
+      this->last_web_client_activity = millis();
 
-    // Run AP loop
-    if (!connected) {
-      if (this->monitorAP()) {
-        while (true) {
+      // Run AP loop
+      if (!connected) {
+        if (this->monitorAP()) {
+          while (true) {
+            server.handleClient();
+
+            static bool wasConnected = WiFi.softAPgetStationNum() > 0;
+            bool nowConnected = WiFi.softAPgetStationNum() > 0;
+
+            if (wasConnected && !nowConnected) {
+              Logger::log(STD_MSG, "Client disconnected.");
+              this->shutdownAccessPoint();
+              break;
+            }
+
+            if (c_btn.justPressed()) {
+              Logger::log(STD_MSG, "Exit selected. Starting wardriving...");
+              this->shutdownAccessPoint();
+              break;
+            }
+
+            wasConnected = nowConnected;
+          }
+        }
+      } else { // Or run web server loop
+        this->last_timer = millis();
+
+        while (this->serving) {
           server.handleClient();
+          battery.main(millis());
 
-          static bool wasConnected = WiFi.softAPgetStationNum() > 0;
-          bool nowConnected = WiFi.softAPgetStationNum() > 0;
-
-          if (wasConnected && !nowConnected) {
-            Logger::log(STD_MSG, "Client disconnected.");
-            this->shutdownAccessPoint();
+          // Stay connected until K1T actually disappears — no inactivity
+          // timeout when connected as a client to a known WLAN.
+          if (WiFi.status() != WL_CONNECTED) {
+            Logger::log(WARN_MSG, "WiFi connection lost — resuming wardriving...");
+            this->shutdownAccessPoint(false);
             break;
           }
-
-          wasConnected = nowConnected;
-        }
-      }
-    } else { // Or run web server loop
-      this->last_timer = millis();
-
-      while (this->serving) {
-        server.handleClient();
-        battery.main(millis());
-
-        // Stay connected until K1T actually disappears — no inactivity
-        // timeout when connected as a client to a known WLAN.
-        if (WiFi.status() != WL_CONNECTED) {
-          Logger::log(WARN_MSG, "WiFi connection lost — resuming wardriving...");
-          this->shutdownAccessPoint(false);
-          break;
         }
       }
     }

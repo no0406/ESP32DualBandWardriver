@@ -92,6 +92,13 @@
 #define WEB_PAGE_TIMEOUT 60 * 1000 // 60 seconds
 #define TIMER_UPDATE 1 * 1000 // 1 second
 #define STATION_CONNECT_TIMEOUT 5 * 1000 // 5 seconds
+#define BOOT_MENU_TIMEOUT 15 * 1000 // 15 seconds
+
+// Boot menu options
+#define BOOT_MODE_WARDRIVE  0 // Skip WiFi/AP admin phase, wardrive right away
+#define BOOT_MODE_JOIN_WIFI 1 // Join saved WiFi for web UI, then wardrive
+#define BOOT_MODE_START_AP  2 // Start c5wardriver AP for web UI, then wardrive
+#define BOOT_MODE_DEFAULT   BOOT_MODE_WARDRIVE // Used when the menu times out
 #define WIFI_CONFIG "/settings.json"
 #define LOG_FILE_NAME "wardrive"
 #define SETTING_SANITY "t_ssid"

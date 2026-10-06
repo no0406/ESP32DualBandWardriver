@@ -10,6 +10,7 @@
 #include "display.h"
 #include "BatteryInterface.h"
 #include "SDInterface.h"
+#include "Switches.h"
 
 #include <esp_now.h>
 #include <WiFi.h>
@@ -32,6 +33,7 @@ extern Settings settings;
 extern Display display;
 extern BatteryInterface battery;
 extern WebServer server;
+extern Switches c_btn;
 
 // ============================================================
 // Chunk 5: Geofence entry struct
@@ -154,6 +156,7 @@ class WiFiOps
     uint8_t getNodeEndChannel(uint8_t slot);
     uint8_t getActiveNodeCount();
     void showCountdown();
+    void drawAPExitOption();
     int runWardrive(uint32_t currentTime);
     void scanBLE();
     bool mac_cmp(struct mac_addr addr1, struct mac_addr addr2);
@@ -229,7 +232,7 @@ class WiFiOps
     // --------------------------------------------------------
     String dock_ip = ""; // IP address shown on TFT while docked
 
-    bool begin(bool skip_admin = false);
+    bool begin(uint8_t boot_mode = BOOT_MODE_JOIN_WIFI);
     void main(uint32_t currentTime, bool in_sd_files = false);
     void startLog(String file_name);
     void initBLE();

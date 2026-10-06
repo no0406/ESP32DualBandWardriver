@@ -28,6 +28,103 @@ Switches u_btn = Switches(U_BTN, 1000, U_PULL);
 Switches d_btn = Switches(D_BTN, 1000, D_PULL);
 Switches c_btn = Switches(C_BTN, 1000, C_PULL);
 
+// Boot menu: UP/DOWN to move, SELECT to choose.
+// Falls back to BOOT_MODE_DEFAULT after BOOT_MENU_TIMEOUT,
+// unless any button is pressed first, which stops the countdown.
+uint8_t runBootMenu() {
+  const char* options[] = {"1 Start WDR now", "2 Join saved WiFi", "3 Start AP (60s)"};
+  const uint16_t option_colors[] = {ST77XX_GREEN, YELLOW, CYAN};
+  const uint8_t option_count = sizeof(options) / sizeof(options[0]);
+  const uint8_t option_y = 16;
+  const uint8_t option_spacing = 12;
+
+  uint8_t selected = BOOT_MODE_DEFAULT;
+  int last_secs = -1;
+  bool redraw = true;
+  bool countdown_active = true;
+  uint32_t start = millis();
+
+  display.clearScreen();
+  display.tft->setRotation(3);
+  display.tft->setTextSize(1);
+  display.tft->setTextWrap(false);
+
+  display.tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  display.tft->setCursor(0, 0);
+  display.tft->print("== Boot Menu :) ==");
+  display.tft->setCursor(0, TFT_HEIGHT - SMALL_CHAR_HEIGHT);
+  display.tft->print("UP/DN:Move SEL:Choose");
+
+  Logger::log(STD_MSG, "Showing boot menu...");
+
+  while (true) {
+    uint32_t elapsed = millis() - start;
+
+    if ((countdown_active) && (elapsed >= BOOT_MENU_TIMEOUT)) {
+      Logger::log(STD_MSG, "Boot menu timed out. Using default option.");
+      selected = BOOT_MODE_DEFAULT;
+      break;
+    }
+
+    if (u_btn.justPressed()) {
+      selected = (selected == 0) ? option_count - 1 : selected - 1;
+      redraw = true;
+    }
+
+    if (d_btn.justPressed()) {
+      selected = (selected + 1) % option_count;
+      redraw = true;
+    }
+
+    if (c_btn.justPressed())
+      break;
+
+    // Any input stops the countdown
+    if ((redraw) && (countdown_active) && (last_secs != -1)) {
+      countdown_active = false;
+      display.tft->fillRect(TFT_WIDTH - 18, 0, 18, SMALL_CHAR_HEIGHT, ST77XX_BLACK);
+      Logger::log(STD_MSG, "Boot menu countdown stopped.");
+    }
+
+    if (redraw) {
+      redraw = false;
+      for (uint8_t i = 0; i < option_count; i++) {
+        int y = option_y + i * option_spacing;
+        display.tft->fillRect(0, y, TFT_WIDTH, SMALL_CHAR_HEIGHT, ST77XX_BLACK);
+        display.tft->setCursor(0, y);
+        if (i == selected) {
+          display.tft->setTextColor(ST77XX_BLACK, option_colors[i]);
+          display.tft->print("> ");
+        }
+        else {
+          display.tft->setTextColor(option_colors[i], ST77XX_BLACK);
+          display.tft->print("  ");
+        }
+        display.tft->print(options[i]);
+      }
+    }
+
+    int secs = (BOOT_MENU_TIMEOUT - elapsed + 999) / 1000;
+    if ((countdown_active) && (secs != last_secs)) {
+      last_secs = secs;
+      String secs_str = String(secs) + "s";
+      display.tft->fillRect(TFT_WIDTH - 18, 0, 18, SMALL_CHAR_HEIGHT, ST77XX_BLACK);
+      display.tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+      display.tft->setCursor(TFT_WIDTH - secs_str.length() * 6, 0);
+      display.tft->print(secs_str);
+    }
+
+    delay(20);
+  }
+
+  display.tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  display.clearScreen();
+
+  Logger::log(STD_MSG, "Boot option selected: " + String(options[selected]));
+
+  return selected;
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -88,7 +185,7 @@ void setup() {
   ui_obj.begin();
 
   // Init wifi and bluetooth
-  wifi_ops.begin(c_btn.justPressed());
+  wifi_ops.begin(runBootMenu());
 
   // Init UI
   ui_obj.begin();
