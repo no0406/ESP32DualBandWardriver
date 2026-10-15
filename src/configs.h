@@ -148,8 +148,8 @@
 ////WiFi stuff
 #define mac_history_len 200
 #define CHANNEL_TIMER 80
-#define SOLO_SCAN_MIN_DWELL_MS 45  // Stage 1 tuning (stock 80): shorter probe-response window
-#define SOLO_SCAN_MAX_DWELL_MS 75  // Stage 1 tuning (stock 120): remain longer when an AP responds
+#define SOLO_SCAN_MIN_DWELL_MS 60  // v3 tuning (stock 80, v1/v2 45): shorter probe-response window
+#define SOLO_SCAN_MAX_DWELL_MS 80  // v3 tuning (stock 120, v1/v2 75): remain longer when an AP responds
 #define SOLO_BONUS_CHANNEL_COUNT 6 // Stage 2 tuning (stock 8): 15% bounded exploitation budget per base sweep
 #define SOLO_BLE_INTERVAL_MS 4000
 #if SOLO_SCAN_MIN_DWELL_MS > SOLO_SCAN_MAX_DWELL_MS
