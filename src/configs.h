@@ -28,9 +28,9 @@
 #define DEVICE_NAME      "JCMK C5 Wardriver"
 
 //// Role stuff
-#define SOLO
+// #define SOLO
 // #define CORE
-// #define NODE
+#define NODE
 
 #if !defined(SOLO) && !defined(CORE) && !defined(NODE)
   #error "Define exactly one role: SOLO, CORE, or NODE"
@@ -58,6 +58,8 @@
 
 //// LED stuff
 #define LED_PIN 28
+#define LED_ON  HIGH
+#define LED_OFF LOW
 
 
 //// Display stuff
@@ -123,6 +125,46 @@
 #define SD_CS    10
 
 #define UPDATE_KEY "UpdateFile"
+
+
+//// Seeed XIAO ESP32-C5 (build with -DXIAO_C5 and CDCOnBoot=cdc)
+// Bare node board: no TFT, SD, GPS or buttons fitted. Native USB uses GPIO13/14,
+// BOOT is GPIO28, battery sense is GPIO6 and the user LED is GPIO27, so move
+// everything off those pins.
+#ifdef XIAO_C5
+  #undef LED_PIN
+  #define LED_PIN 27   // yellow user LED, active low
+  #undef LED_ON
+  #undef LED_OFF
+  #define LED_ON  LOW
+  #define LED_OFF HIGH
+
+  #undef TFT_BL
+  #define TFT_BL 3     // MTDI pad, unconnected
+
+  #undef TFT_SCLK
+  #undef TFT_MOSI
+  #undef SPI_SCK
+  #undef SPI_MISO
+  #undef SPI_MOSI
+  #undef SD_CS
+  #define TFT_SCLK 8   // D8
+  #define TFT_MOSI 10  // D10
+  #define SPI_SCK  8   // D8
+  #define SPI_MISO 9   // D9
+  #define SPI_MOSI 10  // D10
+  #define SD_CS    2   // MTMS pad
+
+  #undef U_BTN
+  #undef D_BTN
+  #define U_BTN 0      // D1 (C_BTN stays on GPIO1 = D0)
+  #define D_BTN 25     // D2
+
+  #undef TX_TO_GPS
+  #undef RX_TO_GPS
+  #define TX_TO_GPS 11 // D6
+  #define RX_TO_GPS 12 // D7
+#endif
 
 //// Debug log
 #define DEBUG_LOG_FILE "/debug.log"

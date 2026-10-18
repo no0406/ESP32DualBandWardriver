@@ -31,8 +31,14 @@ Switches c_btn = Switches(C_BTN, 1000, C_PULL);
 void setup() {
   Serial.begin(115200);
 
+#ifdef XIAO_C5
+  // Native USB CDC is only "true" once a host opens the port; don't hang on a power bank
+  for (uint32_t t = millis(); !Serial && millis() - t < 3000;)
+    delay(10);
+#else
   while (!Serial)
     delay(10);
+#endif
 
   // Do SPI stuff first
   sharedSPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
@@ -51,7 +57,7 @@ void setup() {
 
   pinMode(LED_PIN, OUTPUT);
 
-  digitalWrite(LED_PIN, LOW);
+  digitalWrite(LED_PIN, LED_OFF);
 
   // Load settings
   settings.begin();
@@ -117,11 +123,11 @@ void loop() {
   // Nodes
   else if ((wifi_ops.run_mode == NODE_MODE) && (wifi_ops.getNodeReady())) {
     wifi_ops.setCurrentScanMode(WIFI_WARDRIVING);
-    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(LED_PIN, LED_ON);
   }
   else {
     wifi_ops.setCurrentScanMode(WIFI_STANDBY);
     if (wifi_ops.run_mode == NODE_MODE)
-      digitalWrite(LED_PIN, LOW);
+      digitalWrite(LED_PIN, LED_OFF);
   }
 }

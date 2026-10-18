@@ -14,6 +14,21 @@ static const char MAGIC[4] = {'E','N','O','W'};
 
 static constexpr uint8_t ESPNOW_CHANNEL = 6;
 
+// NODE text sends are async; wait for each frame to leave the radio before the
+// next channel change / scan start, otherwise bursts of WiFi results get dropped
+static volatile bool g_enow_tx_pending = false;
+
+static void OnDataSent(const esp_now_send_info_t* tx_info, esp_now_send_status_t status) {
+  g_enow_tx_pending = false;
+}
+
+static void waitEnowTxDone() {
+  uint32_t start = millis();
+  while (g_enow_tx_pending && (millis() - start) < 20)
+    delay(1);
+  g_enow_tx_pending = false;
+}
+
 // Retry behavior for nodes
 static constexpr uint32_t REQ_INITIAL_MS = 300;   // first retry delay
 static constexpr uint32_t REQ_MAX_MS     = 5000;  // cap retry interval
@@ -875,7 +890,9 @@ bool WiFiOps::sendEncryptedStringToCore(const String& s) {
   msg.len = (uint16_t)n;
 
   // SEND FULL STRUCT (like heartbeat)
+  g_enow_tx_pending = true;
   esp_err_t res = esp_now_send(g_core_mac, (uint8_t*)&msg, sizeof(msg));
+  waitEnowTxDone();
 
   if (res != ESP_OK) {
     Serial.printf("NODE: Encrypted text send FAIL (err=%d)\n", (int)res);
@@ -914,7 +931,9 @@ bool WiFiOps::sendBroadcastStringPlain(const String& s) {
   msg.text[n] = '\0';
   msg.len = (uint16_t)n;
 
+  g_enow_tx_pending = true;
   esp_err_t res = esp_now_send(bcast_mac, (uint8_t*)&msg, sizeof(msg));
+  waitEnowTxDone();
 
   if (res != ESP_OK) {
     Serial.printf("NODE: Broadcast plaintext send FAIL (err=%d)\n", (int)res);
@@ -1209,6 +1228,7 @@ void WiFiOps::startESPNow() {
   }
 
   esp_now_register_recv_cb(OnDataRecv);
+  esp_now_register_send_cb(OnDataSent);
 
   if (this->run_mode == CORE_MODE) {
     Logger::log(STD_MSG, "Role: CORE");
@@ -1658,7 +1678,7 @@ uint16_t WiFiOps::processWardrive(uint16_t networks) {
   if (networks > 0) {
     for (int i = 0; i < networks; i++) {
       if (this->run_mode == SOLO_MODE)
-        digitalWrite(LED_PIN, HIGH);
+        digitalWrite(LED_PIN, LED_ON);
       display_string = "";
       do_save = false;
       uint8_t *this_bssid_raw = WiFi.BSSID(i);
@@ -1681,7 +1701,7 @@ uint16_t WiFiOps::processWardrive(uint16_t networks) {
         if (exclusion_count > 0 &&
             this->isSSIDExcluded(ssid, exclusions, MAX_SSID_EXCLUSIONS)) {
           Logger::log(STD_MSG, "[EXCL] Skipping excluded SSID: \"" + ssid + "\"");
-          digitalWrite(LED_PIN, LOW);
+          digitalWrite(LED_PIN, LED_OFF);
           continue;
         }
         // ---- end exclusion check ----
@@ -1726,7 +1746,7 @@ uint16_t WiFiOps::processWardrive(uint16_t networks) {
         Logger::log(GUD_MSG, (String)this->mac_history_cursor + " | " + wardrive_line);
 
         if (this->run_mode == SOLO_MODE)
-          digitalWrite(LED_PIN, LOW);
+          digitalWrite(LED_PIN, LED_OFF);
 
         if (do_save) {
           buffer.append(wardrive_line + "\n");
@@ -1754,7 +1774,7 @@ uint16_t WiFiOps::processWardrive(uint16_t networks) {
   }
 
   if (this->run_mode == SOLO_MODE)
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, LED_OFF);
 
   return new_unique_networks;
 }
@@ -2988,6 +3008,13 @@ bool WiFiOps::begin(bool skip_admin) {
   this->current_scan_mode = WIFI_STANDBY;
 
   this->run_mode = settings.loadSetting<int>("m");
+
+  #if defined(NODE)
+    this->run_mode = NODE_MODE;
+    skip_admin = true; // Unattended nodes skip the admin AP wait
+  #elif defined(CORE)
+    this->run_mode = CORE_MODE;
+  #endif
 
   if (!skip_admin) {
     // Init WiFi

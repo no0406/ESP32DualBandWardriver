@@ -1,0 +1,92 @@
+{
+  // NODE build/flash tasks (arduino-cli, esp32 core 3.3.0, same FQBN and flags as CI)
+  // Ctrl+Shift+P > "Tasks: Run Task" > pick one. "Build + Upload + Monitor" repeats the full cycle per node.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build NODE",
+      "type": "process",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "--fqbn", "esp32:esp32:esp32c5:PartitionScheme=min_spiffs,PSRAM=enabled",
+        "--warnings", "none",
+        "--build-property", "compiler.cpp.extra_flags=-DC5_WARDRIVER",
+        "--output-dir", "${workspaceFolder}/build/node",
+        "${workspaceFolder}/src"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Upload NODE",
+      "type": "process",
+      "command": "arduino-cli",
+      "args": [
+        "upload",
+        "-p", "${input:nodePort}",
+        "--fqbn", "esp32:esp32:esp32c5:PartitionScheme=min_spiffs,PSRAM=enabled",
+        "--input-dir", "${workspaceFolder}/build/node",
+        "${workspaceFolder}/src"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Monitor",
+      "type": "process",
+      "command": "arduino-cli",
+      "args": ["monitor", "-p", "${input:nodePort}", "-c", "baudrate=115200"],
+      "isBackground": true,
+      "presentation": { "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build + Upload + Monitor",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Build NODE", "Upload NODE", "Monitor"],
+      "problemMatcher": []
+    },
+    {
+      // Seeed XIAO ESP32-C5: native USB (CDCOnBoot=cdc) + XIAO_C5 pin map, see configs.h
+      "label": "Build NODE (XIAO)",
+      "type": "process",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "--fqbn", "esp32:esp32:esp32c5:PartitionScheme=min_spiffs,PSRAM=enabled,FlashSize=8M,CDCOnBoot=cdc",
+        "--warnings", "none",
+        "--build-property", "compiler.cpp.extra_flags=-DC5_WARDRIVER -DXIAO_C5",
+        "--output-dir", "${workspaceFolder}/build/node_xiao",
+        "${workspaceFolder}/src"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Upload NODE (XIAO)",
+      "type": "process",
+      "command": "arduino-cli",
+      "args": [
+        "upload",
+        "-p", "${input:nodePort}",
+        "--fqbn", "esp32:esp32:esp32c5:PartitionScheme=min_spiffs,PSRAM=enabled,FlashSize=8M,CDCOnBoot=cdc",
+        "--input-dir", "${workspaceFolder}/build/node_xiao",
+        "${workspaceFolder}/src"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Build + Upload + Monitor (XIAO)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Build NODE (XIAO)", "Upload NODE (XIAO)", "Monitor"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "nodePort",
+      "type": "promptString",
+      "description": "Node serial port (e.g. COM6). Do not use the Core's port.",
+      "default": "COM6"
+    }
+  ]
+}
