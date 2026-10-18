@@ -85,3 +85,17 @@ int8_t BatteryInterface::getBatteryLevel() {
 
   return 0;
 }
+
+float BatteryInterface::getBatteryVoltage() {
+  if (this->has_max17048)
+    return this->maxlipo.cellVoltage();
+
+  return -1;
+}
+
+float BatteryInterface::getChargeRate() {
+  if (this->has_max17048)
+    return this->maxlipo.chargeRate();
+
+  return 0;
+}

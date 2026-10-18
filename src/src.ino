@@ -32,8 +32,8 @@ Switches c_btn = Switches(C_BTN, 1000, C_PULL);
 // Falls back to BOOT_MODE_DEFAULT after BOOT_MENU_TIMEOUT,
 // unless any button is pressed first, which stops the countdown.
 uint8_t runBootMenu() {
-  const char* options[] = {"1 Start WDR now", "2 Join saved WiFi", "3 Start AP (60s)"};
-  const uint16_t option_colors[] = {ST77XX_GREEN, YELLOW, CYAN};
+  const char* options[] = {"1 Start WDR now", "2 Join saved WiFi", "3 Start AP (60s)", "4 Charge only"};
+  const uint16_t option_colors[] = {ST77XX_GREEN, YELLOW, CYAN, ST77XX_MAGENTA};
   const uint8_t option_count = sizeof(options) / sizeof(options[0]);
   const uint8_t option_y = 16;
   const uint8_t option_spacing = 12;
@@ -125,6 +125,74 @@ uint8_t runBootMenu() {
   return selected;
 }
 
+// Charge only: WiFi/BLE are never started, so nothing scans or logs.
+// Screen stays on, dimmed to CHARGE_SCREEN_BRIGHTNESS so status is always
+// visible. SELECT reboots back to the boot menu.
+void runChargeMode() {
+  uint32_t last_update = 0;
+
+  Logger::log(STD_MSG, "Charge only mode. Radios off.");
+
+  // PWM the backlight; nothing else touches TFT_BL until the reboot
+  analogWrite(TFT_BL, (ON == HIGH) ? CHARGE_SCREEN_BRIGHTNESS : 255 - CHARGE_SCREEN_BRIGHTNESS);
+
+  display.clearScreen();
+  display.tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  display.tft->setCursor(0, 0);
+  display.tft->print("Charge only - radios off");
+  display.tft->setCursor(0, TFT_HEIGHT - SMALL_CHAR_HEIGHT);
+  display.tft->print("SEL:Reboot to menu");
+
+  while (true) {
+    uint32_t now = millis();
+
+    if (c_btn.justPressed()) {
+      Logger::log(STD_MSG, "Leaving charge mode. Rebooting...");
+      delay(100);
+      ESP.restart();
+    }
+
+    if ((last_update == 0) || (now - last_update >= 3000)) {
+      last_update = now;
+      int8_t pct = battery.getBatteryLevel();
+      String level = battery.i2c_supported ? String(pct) + "%" : String("n/a");
+      float volts = battery.getBatteryVoltage();
+      String volt_str = (volts > 0) ? String(volts, 2) + "V" : String("--V");
+
+      // Green only when basically full, red when low
+      uint16_t pct_color = !battery.i2c_supported ? ST77XX_WHITE
+                         : (pct > 95) ? ST77XX_GREEN
+                         : (pct > 20) ? YELLOW
+                         : RED;
+      // Green once the cell reaches charge-complete voltage
+      uint16_t volt_color = (volts <= 0) ? ST77XX_WHITE
+                          : (volts > 4.15) ? ST77XX_GREEN
+                          : YELLOW;
+
+      display.tft->fillRect(0, 14, TFT_WIDTH, 50, ST77XX_BLACK);
+      display.tft->setTextSize(2);
+      display.tft->setTextColor(pct_color, ST77XX_BLACK);
+      display.tft->setCursor(0, 14);
+      display.tft->print("BAT " + level);
+      display.tft->setTextColor(volt_color, ST77XX_BLACK);
+      display.tft->setCursor(0, 34);
+      display.tft->print(volt_str);
+      display.tft->setTextSize(1);
+      display.tft->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+
+      if (volts > 0) {
+        float rate = battery.getChargeRate();
+        display.tft->setCursor(0, 56);
+        display.tft->print("Rate " + String(rate > 0 ? "+" : "") + String(rate, 1) + "%/hr");
+      }
+
+      Logger::log(STD_MSG, "Charge: " + level + " " + volt_str);
+    }
+
+    delay(20);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -184,8 +252,13 @@ void setup() {
 
   ui_obj.begin();
 
+  uint8_t boot_mode = runBootMenu();
+
+  if (boot_mode == BOOT_MODE_CHARGE)
+    runChargeMode(); // never returns
+
   // Init wifi and bluetooth
-  wifi_ops.begin(runBootMenu());
+  wifi_ops.begin(boot_mode);
 
   // Init UI
   ui_obj.begin();

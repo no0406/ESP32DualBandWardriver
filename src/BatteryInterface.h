@@ -32,6 +32,8 @@ class BatteryInterface {
     void   RunSetup();
     void   main(uint32_t currentTime);
     int8_t getBatteryLevel();
+    float  getBatteryVoltage(); // -1 if no MAX17048
+    float  getChargeRate();     // %/hr, + charging / - draining
 };
 
 #endif
