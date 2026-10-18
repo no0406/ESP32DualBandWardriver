@@ -26,10 +26,10 @@ starts wardriving. This branch replaces that with a menu shown on every boot:
 
 ```
 == Boot Menu :) ==            15s
-> 1 Start WDR now
-  2 Join saved WiFi
-  3 Start AP (60s)
-  4 Charge only
+> 1. Start WDR now
+  2. Join saved WiFi
+  3. Start AP (60s)
+  4. Charge only
 
 UP/DN:Move SEL:Choose
 ```
@@ -40,10 +40,10 @@ UP/DN:Move SEL:Choose
 
 | Option | Colour | What happens |
 |---|---|---|
-| 1 Start WDR now | Green | Skips the WiFi/AP admin phase entirely and starts wardriving straight away (scans begin once there is a GPS fix and an SD card). This is the default. |
-| 2 Join saved WiFi | Yellow | Joins the WiFi saved in settings and serves the web UI on the device's IP. Stays there until that WiFi is lost, then wardrives. If the join fails, "Failed to connect" stays on screen for 2 s and it goes straight to wardriving. |
-| 3 Start AP (60s) | Cyan | Starts the device's own access point for 60 s (SSID and password from settings). A client connecting opens the web UI; when it disconnects, wardriving starts. If no one connects within 60 s, wardriving starts anyway. |
-| 4 Charge only | Magenta | See below. Nothing scans. |
+| 1. Start WDR now | Green | Skips the WiFi/AP admin phase entirely and starts wardriving straight away (scans begin once there is a GPS fix and an SD card). This is the default. |
+| 2. Join saved WiFi | Yellow | Joins the WiFi saved in settings and serves the web UI on the device's IP. Stays there until that WiFi is lost, then wardrives. If the join fails, "Failed to connect" stays on screen for 2 s and it goes straight to wardriving. |
+| 3. Start AP (60s) | Cyan | Starts the device's own access point for 60 s (SSID and password from settings). A client connecting opens the web UI; when it disconnects, wardriving starts. If no one connects within 60 s, wardriving starts anyway. |
+| 4. Charge only | Magenta | See below. Nothing scans. |
 
 **Exit option in the AP phase:** while the AP is up (option 3), the bottom line shows a green
 `> Exit and Start WDR now`. Pressing SELECT shuts the AP down and starts wardriving immediately, both

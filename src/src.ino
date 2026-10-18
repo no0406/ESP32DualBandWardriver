@@ -32,7 +32,7 @@ Switches c_btn = Switches(C_BTN, 1000, C_PULL);
 // Falls back to BOOT_MODE_DEFAULT after BOOT_MENU_TIMEOUT,
 // unless any button is pressed first, which stops the countdown.
 uint8_t runBootMenu() {
-  const char* options[] = {"1 Start WDR now", "2 Join saved WiFi", "3 Start AP (60s)", "4 Charge only"};
+  const char* options[] = {"1. Start WDR now", "2. Join saved WiFi", "3. Start AP (60s)", "4. Charge only"};
   const uint16_t option_colors[] = {ST77XX_GREEN, YELLOW, CYAN, ST77XX_MAGENTA};
   const uint8_t option_count = sizeof(options) / sizeof(options[0]);
   const uint8_t option_y = 16;
