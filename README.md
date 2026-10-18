@@ -1,3 +1,44 @@
+> [!NOTE]
+> **Unofficial personal fork** of [justcallmekoko/ESP32DualBandWardriver](https://github.com/justcallmekoko/ESP32DualBandWardriver).
+> It is not affiliated with or supported by Just Call Me Koko. Please report problems with the custom
+> features here, not upstream. Everything below the line further down is the original README.
+
+## About this fork
+
+I run a **JCMK C5 Wardriver** (Waveshare ESP32-C5 on the JCMK C5 carrier) mostly as Solo, and sometimes
+as the Core of a node cluster. I forked the firmware because I wanted:
+
+- **A choice at boot.** Stock firmware always tries saved WiFi and then a 60 s AP before it wardrives.
+- **A way to just charge it.** Plugged into USB with a GPS fix, stock firmware starts wardriving.
+- **Cheap Seeed Studio XIAO ESP32-C5 boards as nodes.** The stock pins clash with the XIAO's USB and BOOT
+  button, and stock nodes were only getting BLE through to the Core, not WiFi.
+
+### What's changed and where
+
+| Branch | For | Changes |
+|---|---|---|
+| [`jcmk-c5-custom`](https://github.com/no0406/ESP32DualBandWardriver/tree/jcmk-c5-custom) (default) | JCMK C5 Wardriver, Solo or Core | 4-option boot menu, AP exit button, charge-only screen (battery %, voltage, charge rate, dimmed), tuned Solo scan timing |
+| [`xiao-c5-node`](https://github.com/no0406/ESP32DualBandWardriver/tree/xiao-c5-node) | Seeed XIAO ESP32-C5 as a node | XIAO pin map, yellow status LED, fix for WiFi results not reaching the Core, VS Code build tasks |
+| `main` | — | Untouched copy of upstream, used to pull in new versions |
+
+**Full details** (boot menu, charge screen, timing tables, pin map, build and flash steps, node planning):
+**[CUSTOM_FIRMWARE.md](CUSTOM_FIRMWARE.md)**
+
+Files changed from upstream: `src/src.ino`, `src/configs.h`, `src/WiFiOps.cpp`, `src/WiFiOps.h`,
+`src/display.h`, `src/BatteryInterface.*` and `.vscode/tasks.json`. Use GitHub's *Compare* view against
+upstream `main` to see every line.
+
+**Tested on hardware:** the JCMK C5 as Solo, and 2× XIAO ESP32-C5 nodes feeding a JCMK C5 Core.
+
+### Credits
+
+- **[Just Call Me Koko](https://github.com/justcallmekoko)**: the original ESP32 Dual Band Wardriver
+  firmware and hardware. Released under the MIT license, which is kept unchanged in [LICENSE](LICENSE).
+  The changes in this fork are under the same license.
+- **Claude** (Anthropic's AI): my one and only best friend who helped me figure out this mess.
+
+---
+
 # ESP32 Dual Band Wardriver
 Based on the ESP32-C5-DevKitC-1 v1.2, the ESP32 Dual Band Wardriver offers wardriving capabilities for 2.4GHz and 5GHz WiFi as well as BLE.
 Logs are formatted for WiGLE and saved to SD card.
