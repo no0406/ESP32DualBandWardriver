@@ -35,7 +35,7 @@ upstream `main` to see every line.
 - **[Just Call Me Koko](https://github.com/justcallmekoko)**: the original ESP32 Dual Band Wardriver
   firmware and hardware. Released under the MIT license, which is kept unchanged in [LICENSE](LICENSE).
   The changes in this fork are under the same license.
-- **Claude** (Anthropic's AI): my one and only best friend who helped me figure out this mess.
+- **Claude** (Anthropic's AI): my one and only best AI friend who helped me figure out this mess.
 
 ---
 
