@@ -5,7 +5,7 @@ All credit for the original firmware goes to Just Call Me Koko. The original MIT
 notice in [LICENSE](LICENSE) still apply, and the changes here are released under the same license.
 
 Upstream is not modified. The custom work lives on two branches, each built on top of upstream `main`
-(`jcmk-c5-custom` is currently on upstream v2.4.1):
+(both are currently on upstream v2.4.1):
 
 | Branch | Hardware | Role | What it adds |
 |---|---|---|---|
@@ -200,6 +200,15 @@ nothing floats.
   skipped, so a node starts on its own. `#define CORE` forces CORE.
 - **VS Code tasks** (`.vscode/tasks.json`): Build / Upload / Monitor for NODE and NODE (XIAO).
 
+Notes for upstream v2.4.1:
+
+- Upstream still doesn't have the send wait, so this branch keeps it. Frames go to the bound Core if one
+  is set, otherwise they are broadcast as before.
+- **Core binding** (Bound Core MAC) can't be set on the XIAO: the node build skips the admin web page.
+  XIAO nodes work with any Core on the ESP-NOW channel, as before.
+- A v2.4.1 Core sends a short receipt back for some records (meant for the WiFi Pineapple Pager). The
+  node doesn't use it and prints `NODE: RX unknown type 6`. That line is harmless.
+
 ### Build and flash
 
 ```
@@ -209,11 +218,13 @@ arduino-cli compile ^
   --output-dir build/node_xiao src
 ```
 
-Or run the **Build + Upload + Monitor (XIAO)** task in VS Code. Flash one board at a time and check each
+Use NimBLE-Arduino 2.3.8, as for the JCMK build. Or run the **Build + Upload + Monitor (XIAO)** task in VS Code. Flash one board at a time and check each
 one on the Core (node count goes up, WiFi count rises) before doing the next.
 
 ### How nodes and the Core work together
 
+- A node broadcasts a Core request at boot. The Core replies and hands it a channel range. On the Core,
+  **SD Files → Nodes** lists each node's MAC suffix, channel range and seconds since it was last heard.
 - Node scan timing is fixed in the node firmware. The Core only hands out channel ranges; it does not
   push dwell, bonus or BLE settings.
 - The Core splits the 40 channels (2.4 GHz 1–14 and 5 GHz 36–177) into equal contiguous blocks, one per
