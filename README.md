@@ -43,6 +43,12 @@ upstream `main` to see every line.
 Based on the ESP32-C5-DevKitC-1 v1.2, the ESP32 Dual Band Wardriver offers wardriving capabilities for 2.4GHz and 5GHz WiFi as well as BLE.
 Logs are formatted for WiGLE and saved to SD card.
 
+The `T_DONGLE_C5` build supports the LilyGo T-Dongle C5's onboard 160x80
+ST7735 display, microSD slot, and GPIO28 BOOT button. Connect a 3.3V UART GPS
+RX to GPIO11 and GPS TX to GPIO12. The single button cycles the stats, detail,
+channel-popularity, and incognito screens; the SD file menu is intentionally
+unavailable. Stored logs remain uploadable through dock mode and the admin web UI.
+
 ## Table of Contents
 - [Leaderboards](#leaderboards)
 - [Connections](#connections)
@@ -63,6 +69,7 @@ Logs are formatted for WiGLE and saved to SD card.
     - [Display Screens](#display-screens)
     - [Buttons](#buttons)
     - [Uploads](#uploads)
+    - [Sanitize Logs with Wardacted](#sanitize-logs-with-wardacted)
     - [Dock Mode](#dock-mode)
     - [Geofence Zones](#geofence-zones)
     - [SSID Exclusions](#ssid-exclusions)
@@ -128,18 +135,20 @@ The User Buttons require pull-down resistors.
 | -------- | -------- |
 | `GPIO8`  | `DOWN`   |
 | `GPIO9`  | `UP`     |
-| `GPIO15` | `SELECT` |
+| `GPIO1`  | `SELECT` |
 
 ## Install Firmware
 
 The [C5 Wardriver Installer](https://justcallmekoko.github.io/C5WardriverInstaller/) is the default and recommended method for installing firmware. It runs in a Chromium-based browser with Web Serial support, such as Google Chrome or Microsoft Edge.
 
-1. Connect the ESP32-C5 DevKit to your computer with a USB data cable.
+1. Connect the JCMK C5 Wardriver or LilyGo T-Dongle C5 to your computer with a USB data cable.
 2. Open the [C5 Wardriver Installer](https://justcallmekoko.github.io/C5WardriverInstaller/).
 3. Select the desired hardware and firmware version from the catalog.
 4. Leave **Clean / first install** selected for a new device or a device previously running different firmware.
 5. Read and acknowledge the erase warning, then select **Flash firmware** and choose the ESP32-C5 serial device.
 6. Keep the device connected until the installer reports that flashing is complete, then power-cycle it.
+
+The JCMK C5 Wardriver and LilyGo T-Dongle C5 use the same ESP32-C5 chip, so the installer cannot identify the board variant from the chip alone. Always select the exact connected hardware; flashing the other target can configure incompatible pins and peripherals.
 
 **Clean / first install** erases the device and writes the complete compatible flash layout, including the bootloader, partition table, OTA data, and application. This is required when the existing flash layout is unknown or incompatible.
 
@@ -149,7 +158,7 @@ The [C5 Wardriver Installer](https://justcallmekoko.github.io/C5WardriverInstall
 
 Use the [C5 Wardriver Installer](https://justcallmekoko.github.io/C5WardriverInstaller/) for normal firmware updates:
 
-1. Connect the ESP32-C5 DevKit to your computer with a USB data cable.
+1. Connect the target device to your computer with a USB data cable.
 2. Select the desired catalog firmware.
 3. Select **Update / preserve settings** when the device already has a compatible C5 Wardriver flash layout.
 4. Select **Flash firmware**, choose the ESP32-C5 serial device, and wait for completion before power-cycling.
@@ -168,7 +177,7 @@ SD card updates remain supported when a browser and direct USB connection are no
 ## Usage
 
 ### Booting
-When powered on, the C5 Wardriver attempts to connect to WiFi using saved credentials. If no credentials are saved or the network is unavailable, it starts its own access point named `c5wardriver` (password: `c5wardriver`). The AP remains active for 60 seconds if no clients connect, or until all clients disconnect.
+When powered on, the C5 Wardriver attempts to connect to WiFi using saved credentials. If no credentials are saved or the network is unavailable, it starts its admin access point. Its default SSID and password are both `c5wardriver`; both can be changed in Admin settings. The AP remains active for 60 seconds if no clients connect, or until all clients disconnect.
 
 If the device connects to a saved WiFi network, the web UI remains available indefinitely — it will stay connected until the network disappears. You can skip the admin phase entirely by holding `SELECT` when the boot logo appears.
 
@@ -180,6 +189,8 @@ On first boot, connect to the `c5wardriver` access point and navigate to `http:/
 - **WDG Wars API key** — for direct log upload to WDGWars
 - **Trigger SSID / Password** — network that triggers dock mode (see [Dock Mode](#dock-mode))
 - **Admin Password** — enables Basic Auth on the web UI
+- **Admin AP SSID / Password** — customizes the fallback configuration access point
+- **Core MAC** — optionally binds a Node to one specific Core
 - **SSID Exclusions** — SSIDs to never log
 - **Geofence Zones** — zones where wardriving pauses
 - **SD Debug Log** — enable to write all log entries to `/debug.log` on the SD card
@@ -201,6 +212,8 @@ Original stats display: firmware version, SD status, battery, scan status, log f
 **Screen 3 — Incognito**
 5-second countdown then backlight off. Press any button to exit.
 
+The on-device **Nodes** menu is available from the file/menu screen. In Core mode it lists each active node by the last two MAC bytes, assigned channel block, and seconds since last contact. Use `UP` and `DOWN` to scroll.
+
 ### Buttons
 | Button   | Function |
 | -------- | -------- |
@@ -212,6 +225,12 @@ Original stats display: firmware version, SD status, battery, scan status, log f
 Log files can be uploaded to WiGLE and WDGWars directly from the web UI or automatically via dock mode. Select a log file from the file list and choose Upload — options are WiGLE, WDGWars, or Both.
 
 Sidecar files (`.wigle` / `.wdg`) are created after successful uploads to prevent duplicate uploads across reboots.
+
+### Sanitize Logs with Wardacted
+
+[Wardacted](https://justcallmekoko.github.io/Wardacted/) is a free browser-based tool for sanitizing wardrive logs before sharing or publishing them. Download a WiGLE CSV log from the C5 Wardriver web UI, open it in Wardacted, then remove records using polygon or circle geofences and optional SSID, MAC address, or regular-expression rules. Single logs and ZIP batches are supported.
+
+Log contents, geofences, filter rules, filenames, network identifiers, and output files remain in the browser. Wardacted sends only the aggregate number of redacted records to its counter. Map tiles are loaded from OpenStreetMap, so the viewed map area is disclosed to that tile service. Direct uploads from the C5 Wardriver do not pass through Wardacted; download and sanitize a log first when redaction is required.
 
 ### Dock Mode
 Dock mode automates log uploads when the wardriver detects a configured trigger SSID.
@@ -252,6 +271,8 @@ Standalone operation. Requires SD card, GPS module, and GPS fix. Logs directly t
 
 ### Node Mode
 Collects wardriving data and sends it to a Core device. Does not require SD card or GPS.
+
+Set **Core MAC** in the web admin settings to bind a Node to a specific Core. Once configured, discovery, heartbeats, assignments, and wardrive records are accepted from or sent to only that Core. Leave the field empty for legacy automatic discovery.
 
 ### Core Mode
 Receives data from Nodes, pairs it with GPS location data, and saves consolidated log files to SD. Requires SD card and GPS. Does not collect wardriving data itself. Supports direct upload to WiGLE and WDGWars.
