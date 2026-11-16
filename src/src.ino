@@ -10,6 +10,9 @@
 #include "utils.h"
 #include "ui.h"
 #include "logger.h"
+#ifdef HAS_T_DONGLE_LED
+  #include <APA102.h>
+#endif
 
 Buffer buffer;
 Settings settings;
@@ -19,8 +22,30 @@ WiFiOps wifi_ops;
 Utils utils;
 UI ui_obj;
 bool g_force_display_redraw = false;
-
 SPIClass sharedSPI(SPI);
+
+#ifdef HAS_T_DONGLE_LED
+APA102<T_DONGLE_LED_DATA_PIN, T_DONGLE_LED_CLOCK_PIN> t_dongle_led;
+
+void restoreTDongleSpi() {
+  // APA102 bit-banging changes the shared pins to GPIO outputs. Fully restart
+  // the hardware SPI peripheral so TFT and SD traffic owns GPIO2/GPIO6 again.
+  sharedSPI.end();
+  sharedSPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+}
+
+void writeTDongleLed(bool scanning) {
+  const uint8_t brightness = scanning ? 10 : 0;
+  t_dongle_led.startFrame();
+  t_dongle_led.sendColor(0, 0, scanning ? 255 : 0, brightness);
+  t_dongle_led.endFrame(1);
+
+  // APA102 has no chip-select, so normal TFT/SD traffic can alter its state.
+  // Reassert it last, then immediately return the shared pins to hardware SPI.
+  restoreTDongleSpi();
+}
+#endif
+
 Display display = Display(&sharedSPI, TFT_CS, TFT_DC, TFT_RST);
 SDInterface sd_obj = SDInterface(&sharedSPI, SD_CS);
 
@@ -55,9 +80,10 @@ void setup() {
   // Show us IDF information
   Logger::log(STD_MSG, "ESP-IDF version is: " + String(esp_get_idf_version()));
 
-  pinMode(LED_PIN, OUTPUT);
-
-  digitalWrite(LED_PIN, LED_OFF);
+  #ifdef HAS_ACTIVITY_LED
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, LED_OFF);
+  #endif
 
   // Load settings
   settings.begin();
@@ -88,13 +114,16 @@ void setup() {
   battery.RunSetup();
   battery.battery_level = battery.getBatteryLevel();
 
-  // Init GPS
-  gps.begin();
-
   ui_obj.begin();
 
+  // Keep the USB serial console available throughout the blocking admin window.
+  // On ESP32-C5, starting the GPS UART first can disrupt console input before a
+  // serial `wardrive` or `mode core` bypass reaches WiFiOps::begin().
   // Init wifi and bluetooth
   wifi_ops.begin(c_btn.justPressed());
+
+  // Init GPS only after admin mode has exited.
+  gps.begin();
 
   // Init UI
   ui_obj.begin();
@@ -102,6 +131,11 @@ void setup() {
   settings.printJsonSettings(settings.getSettingsString());
 
   Logger::log(GUD_MSG, "Initialization complete!");
+
+  #ifdef HAS_T_DONGLE_LED
+    // Latch idle/off once, then immediately return GPIO2/GPIO6 to SPI.
+    writeTDongleLed(false);
+  #endif
 }
 
 void loop() {
@@ -123,11 +157,22 @@ void loop() {
   // Nodes
   else if ((wifi_ops.run_mode == NODE_MODE) && (wifi_ops.getNodeReady())) {
     wifi_ops.setCurrentScanMode(WIFI_WARDRIVING);
-    digitalWrite(LED_PIN, LED_ON);
+    #ifdef HAS_ACTIVITY_LED
+      digitalWrite(LED_PIN, LED_ON);
+    #endif
   }
   else {
     wifi_ops.setCurrentScanMode(WIFI_STANDBY);
-    if (wifi_ops.run_mode == NODE_MODE)
-      digitalWrite(LED_PIN, LED_OFF);
+    if (wifi_ops.run_mode == NODE_MODE) {
+      #ifdef HAS_ACTIVITY_LED
+        digitalWrite(LED_PIN, LED_OFF);
+      #endif
+    }
   }
+
+  #ifdef HAS_T_DONGLE_LED
+    // TFT and SD traffic can also clock the chip-select-less APA102. Reassert
+    // its intended state last; writeTDongleLed() immediately restores SPI.
+    writeTDongleLed(wifi_ops.getCurrentScanMode() == WIFI_WARDRIVING);
+  #endif
 }

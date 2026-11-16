@@ -62,6 +62,7 @@ class UI {
     Menu delete_all_menu;
     Menu upload_all_menu;
     Menu mark_geofence_menu;
+    Menu nodes_menu;
     
 
     bool hard_refresh = false;
@@ -78,6 +79,7 @@ class UI {
 
     uint8_t  popularity_page = 0;
     uint32_t popularity_page_started_ms = 0;
+    uint32_t nodes_menu_last_refresh_ms = 0;
 
     void printFirmwareVersion();
     void printBatteryLevel(int8_t batteryLevel);
@@ -88,11 +90,13 @@ class UI {
                      int8_t batteryLevel, bool do_now = false);
     void drawChannelPopularity(uint32_t currentTime, bool do_now = false);
     void setDisplayMode(uint8_t new_mode);
+    uint8_t nextDisplayMode(uint8_t current, bool forward) const;
     void addNodes(Menu * menu, String name, uint8_t color, Menu * child, int place,
                   std::function<void()> callable, uint32_t size = 0,
                   bool selected = false, String command = "");
     void setupSDFileList();
     void buildSDFileMenu();
+    void buildNodesMenu(bool preserve_selection = false);
     void drawCurrentMenu();
     void handleMenuNavigation();
 
