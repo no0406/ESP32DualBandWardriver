@@ -84,6 +84,7 @@ void Buffer::logOpen(String file_name, fs::FS* fs, bool serial) {
 void Buffer::add(const uint8_t* buf, uint32_t len, bool is_pcap){
   // buffer is full -> drop packet
   if((useA && bufSizeA + len >= BUF_SIZE && bufSizeB > 0) || (!useA && bufSizeB + len >= BUF_SIZE && bufSizeA > 0)){
+    dropped++;
     return;
   }
   
@@ -241,6 +242,11 @@ void Buffer::save() {
 
   bufSizeA = 0;
   bufSizeB = 0;
+
+  if (dropped > 0) {
+    Logger::log(WARN_MSG, "[BUF] Buffer full, dropped " + String(dropped) + " entries");
+    dropped = 0;
+  }
 
   saving = false;
 }

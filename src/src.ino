@@ -255,8 +255,8 @@ void setup() {
     Logger::log(GUD_MSG, "Current settings format supported");
   }
 
-  // Init our buffer for writing logs
-  buffer = Buffer();
+  // The global buffer already allocated in its constructor;
+  // reassigning a new Buffer() here leaked one buffer pair
 
   // Init SD Card
   if(!sd_obj.initSD())
@@ -295,6 +295,7 @@ void setup() {
   settings.printJsonSettings(settings.getSettingsString());
 
   Logger::log(GUD_MSG, "Initialization complete!");
+  Logger::log(STD_MSG, "Free heap: " + String(ESP.getFreeHeap()) + " bytes");
 
   #ifdef HAS_T_DONGLE_LED
     // Latch idle/off once, then immediately return GPIO2/GPIO6 to SPI.

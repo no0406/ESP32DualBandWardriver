@@ -144,7 +144,7 @@
 
 
 //// Buffer stuff
-#define BUF_SIZE 2 * 1024
+#define BUF_SIZE 8 * 1024 // stock 2KB dropped lines when one scan found ~35+ new networks
 #define SNAP_LEN 2324
 
 

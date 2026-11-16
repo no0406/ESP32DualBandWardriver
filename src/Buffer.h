@@ -49,6 +49,7 @@ class Buffer {
     bool writing = false; // acceppting writes to buffer
     bool useA = true; // writing to bufA or bufB
     bool saving = false; // currently saving onto the SD card
+    uint32_t dropped = 0; // entries dropped because both buffers were full
 
     String fileName = "/0.pcap";
     File file;

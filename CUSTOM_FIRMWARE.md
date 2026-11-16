@@ -4,11 +4,12 @@ This is a personal fork of [justcallmekoko/ESP32DualBandWardriver](https://githu
 All credit for the original firmware goes to Just Call Me Koko. The original MIT license and copyright
 notice in [LICENSE](LICENSE) still apply, and the changes here are released under the same license.
 
-Upstream is not modified. The custom work lives on two branches, each built on top of upstream `main`:
+Upstream is not modified. The custom work lives on two branches, each built on top of upstream `main`
+(`jcmk-c5-custom` is currently on upstream v2.4.1):
 
 | Branch | Hardware | Role | What it adds |
 |---|---|---|---|
-| [`jcmk-c5-custom`](https://github.com/no0406/ESP32DualBandWardriver/tree/jcmk-c5-custom) | JCMK C5 Wardriver (Waveshare ESP32-C5 on the JCMK C5 carrier) | SOLO (Core via settings) | Boot menu, charge-only mode, SOLO scan tuning |
+| [`jcmk-c5-custom`](https://github.com/no0406/ESP32DualBandWardriver/tree/jcmk-c5-custom) | JCMK C5 Wardriver (Waveshare ESP32-C5 on the JCMK C5 carrier) | SOLO (Core via settings) | Boot menu, charge-only mode, SOLO scan tuning, larger SD log buffer |
 | [`xiao-c5-node`](https://github.com/no0406/ESP32DualBandWardriver/tree/xiao-c5-node) | Seeed Studio XIAO ESP32-C5 | NODE | XIAO pin map, status LED, node WiFi forwarding fix |
 
 `main` on this fork is kept as a plain mirror of upstream `main`, so it can be synced without conflicts.
@@ -48,6 +49,11 @@ UP/DN:Move SEL:Choose
 **Exit option in the AP phase:** while the AP is up (option 3), the bottom line shows a green
 `> Exit and Start WDR now`. Pressing SELECT shuts the AP down and starts wardriving immediately, both
 while waiting for a client and while one is connected.
+
+**Serial commands (from upstream v2.4.1):** during options 2 and 3, typing `wardrive` on the serial
+console leaves the admin phase and starts wardriving, and `mode core` switches to Core mode (saved)
+and then starts. The AP name and password are set on the web page under Admin Access Point; the
+defaults are still `c5wardriver` / `c5wardriver`.
 
 ### Charge-only mode (option 4)
 
@@ -97,6 +103,17 @@ Earlier steps that were tried along the way, each kept as its own commit:
 | v2 | 45 | 75 | 6 | 4000 |
 | v3 (current) | 60 | 80 | 6 | 4000 |
 
+### SD log buffer
+
+Wardrive lines are collected in two RAM buffers and written to the SD card once per main loop. Stock
+buffers are 2 KB each, so a single scan that finds about 35 or more new networks fills both, and the
+extra lines are dropped. Those networks still count on screen, but never reach the `.log` file.
+
+- `BUF_SIZE` is 8 KB here, the same as ESP32 Marauder. With PSRAM enabled the buffers live in PSRAM.
+- If lines are still dropped, serial shows `[BUF] Buffer full, dropped N entries`.
+- Boot prints `Free heap: N bytes` (internal RAM) after "Initialization complete!".
+- Stock `setup()` allocated a second buffer pair over the first and leaked it; that line is removed.
+
 ### Smaller changes
 
 - **Panel colour macros (`display.h`):** the JCMK panel swaps red and blue, so `ST77XX_CYAN` shows
@@ -108,7 +125,7 @@ Earlier steps that were tried along the way, each kept as its own commit:
 
 ### Build and flash
 
-arduino-cli with esp32 core 3.3.0:
+arduino-cli with esp32 core 3.3.0 and NimBLE-Arduino 2.3.8 (the version upstream CI uses since v2.4.0):
 
 ```
 arduino-cli compile --fqbn "esp32:esp32:esp32c5:PartitionScheme=min_spiffs,PSRAM=enabled,FlashSize=8M" ^
