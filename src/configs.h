@@ -227,7 +227,7 @@
 #define STANDBY_SCAN_INTERVAL  30 * 1000   // scan for K1T every 30s while in standby (no GPS)
 
 //// Settings JSON buffer — bumped from 2048 to handle 32 settings entries
-#define SETTINGS_JSON_SIZE     4096
+#define SETTINGS_JSON_SIZE     8192 // 4096 was too tight for upgraded files: new settings got saved with no value
 
 // ============================================================
 // Chunk 6: Dock mode state constants

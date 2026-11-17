@@ -2244,11 +2244,12 @@ bool WiFiOps::tryConnectToWiFi(unsigned long timeoutMs) {
 void WiFiOps::startAccessPoint() {
   this->admin_ap_ssid = settings.loadSetting<String>(ADMIN_AP_SSID_NAME);
   this->admin_ap_password = settings.loadSetting<String>(ADMIN_AP_PASS_NAME);
-  if (this->admin_ap_ssid.isEmpty()) {
+  // A setting saved with no value reads back as "null", which became the AP name
+  if (this->admin_ap_ssid.isEmpty() || this->admin_ap_ssid == "null") {
     this->admin_ap_ssid = "c5wardriver";
     settings.saveSetting<bool>(ADMIN_AP_SSID_NAME, this->admin_ap_ssid);
   }
-  if (this->admin_ap_password.isEmpty()) {
+  if (this->admin_ap_password.isEmpty() || this->admin_ap_password == "null") {
     this->admin_ap_password = "c5wardriver";
     settings.saveSetting<bool>(ADMIN_AP_PASS_NAME, this->admin_ap_password);
   }
