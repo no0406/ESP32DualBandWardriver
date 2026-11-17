@@ -114,6 +114,17 @@ extra lines are dropped. Those networks still count on screen, but never reach t
 - Boot prints `Free heap: N bytes` (internal RAM) after "Initialization complete!".
 - Stock `setup()` allocated a second buffer pair over the first and leaked it; that line is removed.
 
+### Admin AP shown as "null"
+
+On a board upgraded from v2.3.2, option 3 showed `Starting AP: null` and the `c5wardriver` network
+never appeared. v2.4.0 added the AP name and password (`ap_ssid`, `ap_pass`) to the settings file, but
+the 4 KB settings parse buffer had no room left, so they were saved with no value. A missing value
+reads back as the text `null`, which became the AP name.
+
+- `SETTINGS_JSON_SIZE` is 8 KB here (stock 4 KB), so new settings get saved properly.
+- A saved name or password of `null` is treated as empty, so the AP falls back to `c5wardriver` /
+  `c5wardriver` and saves it. Fresh boards were never affected.
+
 ### Smaller changes
 
 - **Panel colour macros (`display.h`):** the JCMK panel swaps red and blue, so `ST77XX_CYAN` shows
